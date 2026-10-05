@@ -466,11 +466,17 @@ class FailureAnalysisService:
         return self.db.query(FailureCase).filter(FailureCase.cluster_id == case_id).first()
 
     def get_case_evidence(self, case_id: str) -> list[Evidence]:
-        return self.db.query(Evidence).filter(Evidence.case_id == case_id).all()
+        case = self.get_case(case_id)
+        if not case:
+            return []
+        return self.db.query(Evidence).filter(Evidence.case_id == case.case_id).all()
 
     def get_case_hypotheses(self, case_id: str) -> list[FailureHypothesis]:
+        case = self.get_case(case_id)
+        if not case:
+            return []
         return self.db.query(FailureHypothesis).filter(
-            FailureHypothesis.case_id == case_id
+            FailureHypothesis.case_id == case.case_id
         ).all()
 
     def get_case_history(self, case_id: str) -> dict:
@@ -479,7 +485,7 @@ class FailureAnalysisService:
             return {}
 
         incidents = self.db.query(HistoricalIncident).filter(
-            HistoricalIncident.case_id == case_id
+            HistoricalIncident.case_id == case.case_id
         ).order_by(HistoricalIncident.occurred_at.desc()).all()
 
         previous_complaints = self.db.query(Complaint).filter(
@@ -492,7 +498,7 @@ class FailureAnalysisService:
         ]
 
         return {
-            "case_id": case_id,
+            "case_id": case.case_id,
             "site_id": case.site_id,
             "historical_incidents": incidents,
             "previous_complaints": previous_complaints,

@@ -7,6 +7,7 @@ import { Loader2, AlertCircle, Map as MapIcon, Link as LinkIcon, History, FileTe
 import { FingerprintCard } from "./FingerprintCard";
 import { EvidenceLedger } from "./EvidenceLedger";
 import { InterventionLab } from "./InterventionLab";
+import { HistoryTimeline } from "./HistoryTimeline";
 
 export function CaseWorkspace({ caseId }: { caseId: string }) {
   const [activeTab, setActiveTab] = useState<'CHAIN' | 'EVIDENCE' | 'HISTORY' | 'OPTIONS'>('CHAIN');
@@ -119,18 +120,15 @@ export function CaseWorkspace({ caseId }: { caseId: string }) {
           )}
 
           {activeTab === 'EVIDENCE' && (
-            <EvidenceLedger caseId={caseId} />
+            <EvidenceLedger caseId={caseData.case_id || caseId} />
           )}
 
           {activeTab === 'OPTIONS' && (
-            <InterventionLab caseId={caseId} />
+            <InterventionLab caseId={caseData.case_id || caseId} />
           )}
           
           {activeTab === 'HISTORY' && (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 shadow-sm h-full max-w-4xl mx-auto">
-               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4">Historical Context</h2>
-               <p className="text-slate-500 text-sm">History timeline implementation...</p>
-            </div>
+            <HistoryTimeline caseId={caseData.case_id || caseId} />
           )}
         </div>
       </div>

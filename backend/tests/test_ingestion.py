@@ -11,7 +11,7 @@ def setup_module(module):
     Base.metadata.create_all(bind=engine)
 
 def teardown_module(module):
-    Base.metadata.drop_all(bind=engine)
+    pass
 
 def test_ingest_csv():
     # Create dummy CSV

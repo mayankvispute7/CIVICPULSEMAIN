@@ -148,9 +148,15 @@ class InterventionEngine:
     def __init__(self, db: Session):
         self.db = db
 
+    def _resolve_case(self, case_id: str) -> tuple[Optional[FailureCase], str]:
+        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
+        if not case:
+            case = self.db.query(FailureCase).filter(FailureCase.cluster_id == case_id).first()
+        return case, (case.case_id if case else case_id)
+
     def generate_interventions(self, case_id: str) -> list[InterventionOption]:
         """Generate intervention options for a failure case."""
-        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
+        case, case_id = self._resolve_case(case_id)
         if not case:
             return []
 
@@ -212,6 +218,7 @@ class InterventionEngine:
 
     def apply_constraints(self, case_id: str, constraints: dict) -> InterventionConstraint:
         """Create or update constraints for a case."""
+        case, case_id = self._resolve_case(case_id)
         # Check if constraints already exist
         existing = self.db.query(InterventionConstraint).filter(
             InterventionConstraint.case_id == case_id
@@ -245,6 +252,7 @@ class InterventionEngine:
         weights: Optional[dict] = None,
     ) -> DecisionAnalysis:
         """Score and rank interventions with transparent breakdown."""
+        case, case_id = self._resolve_case(case_id)
         default_weights = {
             "budget_fit": 20,
             "impact": 25,
@@ -376,7 +384,7 @@ class InterventionEngine:
 
     def compute_cost_of_inaction(self, case_id: str) -> dict:
         """Estimate the cost of doing nothing."""
-        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
+        case, case_id = self._resolve_case(case_id)
         if not case:
             return {}
 
@@ -420,6 +428,7 @@ class InterventionEngine:
 
     def compute_counterfactual(self, case_id: str) -> dict:
         """Compare do-nothing vs each intervention scenario."""
+        case, case_id = self._resolve_case(case_id)
         interventions = self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id
         ).order_by(InterventionOption.rank).all()
@@ -458,6 +467,7 @@ class InterventionEngine:
 
     def create_predictions(self, case_id: str) -> list[Prediction]:
         """Create prediction records for intervention outcomes."""
+        case, case_id = self._resolve_case(case_id)
         interventions = self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id,
             InterventionOption.intervention_type != "do_nothing",
@@ -510,15 +520,15 @@ class InterventionEngine:
         intervention_id: str,
     ) -> Optional[ResolutionPlan]:
         """Generate a detailed resolution plan for a selected intervention."""
+        case, case_id = self._resolve_case(case_id)
+        if not case:
+            return None
+
         intervention = self.db.query(InterventionOption).filter(
             InterventionOption.intervention_id == intervention_id,
         ).first()
 
         if not intervention:
-            return None
-
-        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
-        if not case:
             return None
 
         # Mark intervention as selected
@@ -678,24 +688,29 @@ class InterventionEngine:
     # ─────────────────────────────────────────────────────────
 
     def get_interventions(self, case_id: str) -> list[InterventionOption]:
+        _, case_id = self._resolve_case(case_id)
         return self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id
         ).order_by(InterventionOption.rank).all()
 
     def get_constraints(self, case_id: str) -> Optional[InterventionConstraint]:
+        _, case_id = self._resolve_case(case_id)
         return self.db.query(InterventionConstraint).filter(
             InterventionConstraint.case_id == case_id
         ).first()
 
     def get_predictions(self, case_id: str) -> list[Prediction]:
+        _, case_id = self._resolve_case(case_id)
         return self.db.query(Prediction).filter(Prediction.case_id == case_id).all()
 
     def get_resolution_plan(self, case_id: str) -> Optional[ResolutionPlan]:
+        _, case_id = self._resolve_case(case_id)
         return self.db.query(ResolutionPlan).filter(
             ResolutionPlan.case_id == case_id
         ).order_by(ResolutionPlan.created_at.desc()).first()
 
     def get_decision_analysis(self, case_id: str) -> Optional[DecisionAnalysis]:
+        _, case_id = self._resolve_case(case_id)
         return self.db.query(DecisionAnalysis).filter(
             DecisionAnalysis.case_id == case_id
         ).order_by(DecisionAnalysis.created_at.desc()).first()

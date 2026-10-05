@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.database import engine, Base
 from app.api.routers import ingestion, complaints, analysis, execution, outcomes
+import app.models.domain
 from app.schemas.api_schemas import HealthResponse
 
 # Create database tables
