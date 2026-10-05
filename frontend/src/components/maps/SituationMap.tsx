@@ -129,26 +129,7 @@ export default function SituationMap() {
         })}
       </MapContainer>
 
-      {/* Debug Panel */}
-      <div className="absolute bottom-4 left-4 z-50 max-w-sm w-full bg-gray-900/90 text-gray-100 p-4 rounded-lg shadow-xl backdrop-blur-sm border border-gray-700 max-h-64 overflow-y-auto font-mono text-xs">
-        <div className="flex items-center gap-2 font-bold mb-2 text-yellow-400 border-b border-gray-700 pb-2">
-          <Bug className="w-4 h-4" />
-          <span>DEBUG DEV VIEW</span>
-        </div>
-        <div>
-          <strong>Status:</strong> {isLoadingClusters ? 'Loading...' : 'Loaded'} <br />
-          <strong>Error:</strong> {clusterError ? String(clusterError) : 'None'} <br />
-          <strong>Total Clusters:</strong> {clustersData?.total || 0}
-        </div>
-        {clustersData?.clusters && clustersData.clusters.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-gray-700">
-            <strong className="text-green-400">First Cluster Raw:</strong>
-            <pre className="mt-1 whitespace-pre-wrap text-[10px] text-gray-300">
-              {JSON.stringify(clustersData.clusters[0], null, 2)}
-            </pre>
-          </div>
-        )}
-      </div>
+
     </div>
   );
 }
