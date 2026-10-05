@@ -14,7 +14,7 @@ export function SituationHeader() {
   // Calculate total complaints and high priority complaints from severity_distribution
   const totalComplaints = data?.clusters?.reduce((sum, c) => sum + c.complaint_count, 0) || 0;
   const highRiskClusters = data?.clusters?.filter(c => 
-    (c.evidence_strength === 'STRONG' || c.confidence_level === 'HIGH') && 
+    (c.confidence >= 0.7 || c.status === 'CRITICAL' || c.status === 'ACTIVE') && 
     ((c.severity_distribution?.HIGH || 0) > 0 || (c.severity_distribution?.CRITICAL || 0) > 0)
   ).length || 0;
 

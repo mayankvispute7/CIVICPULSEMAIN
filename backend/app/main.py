@@ -41,12 +41,13 @@ def health_check():
         "timestamp": datetime.utcnow(),
     }
 
-# Include routers
-app.include_router(ingestion.router, prefix=settings.API_V1_STR)
-app.include_router(complaints.router, prefix=settings.API_V1_STR)
-app.include_router(analysis.router, prefix=settings.API_V1_STR)
-app.include_router(execution.router, prefix=settings.API_V1_STR)
-app.include_router(outcomes.router, prefix=settings.API_V1_STR)
+# Include routers (mount under /api/v1 and root for frontend compatibility)
+for pfx in [settings.API_V1_STR, ""]:
+    app.include_router(ingestion.router, prefix=pfx)
+    app.include_router(complaints.router, prefix=pfx)
+    app.include_router(analysis.router, prefix=pfx)
+    app.include_router(execution.router, prefix=pfx)
+    app.include_router(outcomes.router, prefix=pfx)
 
 if __name__ == "__main__":
     import uvicorn
