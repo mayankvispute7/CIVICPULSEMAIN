@@ -139,6 +139,9 @@ class ClusterResponse(BaseModel):
     severity_distribution: dict = {}
     semantic_similarity: Optional[float] = None
     cluster_rationale: Optional[str] = None
+    relationship_evidence: dict = {}
+    confidence_level: str = "LOW"
+    evidence_strength: str = "WEAK"
     data_truth: str
     created_at: datetime
 

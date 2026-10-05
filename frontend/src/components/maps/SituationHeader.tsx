@@ -13,11 +13,10 @@ export function SituationHeader() {
   
   // Calculate total complaints and high priority complaints from severity_distribution
   const totalComplaints = data?.clusters?.reduce((sum, c) => sum + c.complaint_count, 0) || 0;
-  const highRisk = data?.clusters?.reduce((sum, c) => {
-    const high = c.severity_distribution?.HIGH || 0;
-    const critical = c.severity_distribution?.CRITICAL || 0;
-    return sum + high + critical;
-  }, 0) || 0;
+  const highRiskClusters = data?.clusters?.filter(c => 
+    (c.evidence_strength === 'STRONG' || c.confidence_level === 'HIGH') && 
+    ((c.severity_distribution?.HIGH || 0) > 0 || (c.severity_distribution?.CRITICAL || 0) > 0)
+  ).length || 0;
 
   return (
     <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center z-10 shrink-0">
@@ -35,8 +34,8 @@ export function SituationHeader() {
           <span className="text-lg font-bold text-gray-900 dark:text-white">{total === 0 && !data ? '--' : total}</span>
         </div>
         <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700">
-          <span className="text-xs uppercase font-semibold text-gray-500 block mb-1">High Priority</span>
-          <span className="text-lg font-bold text-red-600 dark:text-red-400">{total === 0 && !data ? '--' : highRisk}</span>
+          <span className="text-xs uppercase font-semibold text-gray-500 block mb-1">High Risk Clusters</span>
+          <span className="text-lg font-bold text-red-600 dark:text-red-400">{total === 0 && !data ? '--' : highRiskClusters}</span>
         </div>
       </div>
     </div>

@@ -150,6 +150,9 @@ class FailureCluster(Base):
     severity_distribution = Column(JSON, default=dict)
     semantic_similarity = Column(Float, nullable=True)
     cluster_rationale = Column(Text, nullable=True)
+    relationship_evidence = Column(JSON, default=dict)
+    confidence_level = Column(String, default="LOW")
+    evidence_strength = Column(String, default="WEAK")
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
