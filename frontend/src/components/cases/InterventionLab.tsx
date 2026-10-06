@@ -45,7 +45,7 @@ export function InterventionLab({
     queryFn: () => casesApi.getCasePrediction(caseId)
   });
 
-  const { data: simulationRun, isLoading: isSimulating, mutate: simulate } = useMutation({
+  const { data: simulationRun, isPending: isSimulating, mutate: simulate } = useMutation({
     mutationFn: (interventionId: string) => casesApi.simulateIntervention(caseId, {
       intervention_id: interventionId,
       budget: budget === '' ? undefined : budget,
@@ -55,12 +55,19 @@ export function InterventionLab({
     })
   });
 
-  // Re-run simulation when constraints or selected intervention changes
+  // Re-run simulation when selected intervention changes
   useEffect(() => {
     if (selectedIntervention) {
       simulate(selectedIntervention);
     }
-  }, [selectedIntervention, budget, deadlineDays, workers, excavators, simulate]);
+  }, [selectedIntervention, simulate]);
+
+  const handleApplyConstraints = () => {
+    if (selectedIntervention) {
+      simulate(selectedIntervention);
+    }
+    setShowConstraints(false);
+  };
 
 
   const handleChat = (e: React.FormEvent) => {
@@ -73,8 +80,14 @@ export function InterventionLab({
     
     setTimeout(() => {
        let reply = "I've analyzed the constraints and expected physical outcomes.";
-       if (currentInput.includes('budget')) {
-         reply = `With a budget of ${budget ? formatCurrency(budget) : 'unlimited'}, some comprehensive options may become infeasible. I will filter them out in the simulation.`;
+       if (currentInput.includes('compare top 2')) {
+         reply = `Comparing the top options: "Drain Capacity Upgrade" offers a massive 75% risk drop but takes 12 days and ₹8.4L. "Emergency Drain Cleaning" is a quick 3-day fix for ₹1.2L but only drops risk by 25%. If immediate relief is needed, choose cleaning. For long-term resilience, upgrade capacity.`;
+       } else if (currentInput.includes('reduce') && currentInput.includes('cost')) {
+         reply = `To reduce cost, you can lower the budget constraint above. I will automatically filter out expensive structural options like "Drain Capacity Upgrade". You could also consider a phased approach: do "Emergency Drain Cleaning" now, and plan the upgrade for the next fiscal year.`;
+       } else if (currentInput.includes('rain')) {
+         reply = `If heavy rain is forecasted within the next 48 hours, I strongly advise against interventions that require open trenching (like "Drain Capacity Upgrade"). You should immediately prioritize "Emergency Drain Cleaning" or "Blocked Inlet Rehabilitation" as they can be completed in under 4 days.`;
+       } else if (currentInput.includes('budget')) {
+         reply = `With a budget of ${budget ? formatCurrency(budget as number) : 'unlimited'}, some comprehensive options may become infeasible. I will filter them out in the simulation.`;
        } else if (currentInput.includes('why') || currentInput.includes('explain')) {
          reply = "The risk reduction is calculated deterministically based on screening-level models of drainage capacity and historical recurrence data. Cost and time constraints act as strict filters (binary feasibility).";
        } else if (currentInput.includes('time machine')) {
@@ -115,14 +128,14 @@ export function InterventionLab({
   const isFeasible = simResult?.feasibility === "FEASIBLE";
 
   const [rejectMode, setRejectMode] = useState(false);
-  const [rejectFeedback, setRejectFeedback] = useState("");
+  const [rejectReasons, setRejectReasons] = useState<string[]>([]);
   const [acceptMode, setAcceptMode] = useState(false);
 
   const handleRejectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setChatMessages(prev => [...prev, { role: 'user', text: `Rejected: ${rejectFeedback}` }]);
+    setChatMessages(prev => [...prev, { role: 'user', text: `Rejected because: ${rejectReasons.join(", ")}` }]);
     setRejectMode(false);
-    setRejectFeedback("");
+    setRejectReasons([]);
     setTimeout(() => {
       setChatMessages(prev => [...prev, { role: 'assistant', text: "Noted. I've logged the rejection reason. Let's look at other options or adjust constraints." }]);
     }, 600);
@@ -170,6 +183,14 @@ export function InterventionLab({
                      <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Labor Force</label>
                      <input type="number" value={workers} onChange={e => setWorkers(Number(e.target.value))} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
                    </div>
+                 </div>
+                 <div className="flex justify-end pt-2">
+                   <button 
+                     onClick={handleApplyConstraints}
+                     className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-2"
+                   >
+                     Apply Constraints <CheckCircle2 className="w-3 h-3" />
+                   </button>
                  </div>
                </div>
             </motion.div>
@@ -365,17 +386,27 @@ export function InterventionLab({
             
             {rejectMode && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-slate-900 p-4 border border-red-900/50 rounded-xl mt-2">
-                 <h4 className="text-xs font-bold text-red-400 mb-2 uppercase tracking-wider">Provide Feedback for Rejection</h4>
-                 <form onSubmit={handleRejectSubmit} className="flex flex-col gap-2">
-                   <textarea 
-                     value={rejectFeedback}
-                     onChange={(e) => setRejectFeedback(e.target.value)}
-                     className="bg-slate-950 border border-slate-800 rounded p-2 text-sm text-slate-200 h-20 outline-none focus:border-red-500"
-                     placeholder="Why is this option not suitable? (e.g., Too expensive, timeline too long)"
-                     autoFocus
-                   />
-                   <div className="flex justify-end">
-                     <button type="submit" disabled={!rejectFeedback.trim()} className="bg-red-600 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-red-500 text-white text-xs px-4 py-2 rounded font-bold">Submit Feedback</button>
+                 <h4 className="text-xs font-bold text-red-400 mb-3 uppercase tracking-wider">Why are you rejecting this option?</h4>
+                 <form onSubmit={handleRejectSubmit} className="flex flex-col gap-4">
+                   <div className="flex flex-wrap gap-2">
+                     {["Too expensive", "Timeline too long", "Resource constraints", "Policy/Political reasons"].map(reason => {
+                       const isSelected = rejectReasons.includes(reason);
+                       return (
+                         <button
+                           key={reason}
+                           type="button"
+                           onClick={() => setRejectReasons(prev => isSelected ? prev.filter(r => r !== reason) : [...prev, reason])}
+                           className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ${
+                             isSelected ? 'bg-red-600 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'
+                           }`}
+                         >
+                           {reason}
+                         </button>
+                       );
+                     })}
+                   </div>
+                   <div className="flex justify-end mt-2">
+                     <button type="submit" disabled={rejectReasons.length === 0} className="bg-red-600 disabled:bg-slate-800 disabled:text-slate-500 hover:bg-red-500 text-white text-xs px-4 py-2 rounded font-bold">Submit Feedback</button>
                    </div>
                  </form>
               </motion.div>
@@ -403,7 +434,18 @@ export function InterventionLab({
             )}
           </div>
           
-          <form onSubmit={handleChat} className="p-3 border-t border-slate-800 bg-slate-950/80 flex gap-2 items-center">
+          <div className="p-2 border-t border-slate-800 bg-slate-900 flex gap-2 overflow-x-auto custom-scrollbar">
+            {["Compare top 2 options", "How can I reduce the cost?", "What if it rains?"].map((suggestion, idx) => (
+              <button 
+                key={idx}
+                onClick={() => setChatInput(suggestion)}
+                className="shrink-0 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-full text-[10px] text-slate-300 transition-colors whitespace-nowrap"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={handleChat} className="p-3 bg-slate-950/80 flex gap-2 items-center">
             <input 
               type="text" 
               value={chatInput}

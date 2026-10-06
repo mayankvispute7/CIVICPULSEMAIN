@@ -21,7 +21,7 @@ export function SituationHeader() {
   return (
     <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-between items-center z-10 shrink-0">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight uppercase">Baner Infrastructure Situation</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight uppercase">Infrastructure Situation</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Real-time intelligence overlay on satellite map.</p>
       </div>
       <div className="flex gap-4">

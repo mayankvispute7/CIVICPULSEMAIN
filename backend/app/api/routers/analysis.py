@@ -89,48 +89,59 @@ def get_case_site_context(case_id: str, level: str = "LOCAL", db: Session = Depe
 @router.post("/{case_id}/interventions/generate", response_model=list[InterventionResponse])
 def generate_interventions(case_id: str, db: Session = Depends(get_db)):
     """Generate intervention options for a case."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.generate_interventions(case_id)
 
 @router.get("/{case_id}/interventions", response_model=list[InterventionResponse])
 def get_interventions(case_id: str, db: Session = Depends(get_db)):
     """Get existing intervention options."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.get_interventions(case_id)
 
 @router.post("/{case_id}/constraints", response_model=ConstraintResponse)
 def apply_constraints(case_id: str, constraints: ConstraintRequest, db: Session = Depends(get_db)):
     """Apply operational constraints to a case."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.apply_constraints(case_id, constraints.model_dump(exclude_unset=True))
 
 @router.post("/{case_id}/analyze", response_model=DecisionAnalysisResponse)
 def run_decision_analysis(case_id: str, db: Session = Depends(get_db)):
     """Score and rank interventions based on constraints."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.score_interventions(case_id)
 
 @router.get("/{case_id}/cost-of-inaction", response_model=CostOfInactionResponse)
 def get_cost_of_inaction(case_id: str, db: Session = Depends(get_db)):
     """Get the estimated cost of doing nothing."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.compute_cost_of_inaction(case_id)
 
 @router.get("/{case_id}/counterfactual", response_model=CounterfactualResponse)
 def get_counterfactual(case_id: str, db: Session = Depends(get_db)):
     """Get counterfactual scenario analysis."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.compute_counterfactual(case_id)
 
 @router.post("/{case_id}/plan/{intervention_id}", response_model=ResolutionPlanResponse)
 def create_resolution_plan(case_id: str, intervention_id: str, db: Session = Depends(get_db)):
     """Select an intervention and generate a resolution plan."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
     service = InterventionEngine(db)
     
     # Generate predictions first
-    service.create_predictions(case_id)
+    service.create_predictions(case.case_id)
     
-    plan = service.create_resolution_plan(case_id, intervention_id)
+    plan = service.create_resolution_plan(case.case_id, intervention_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Case or intervention not found")
     return plan
@@ -138,6 +149,7 @@ def create_resolution_plan(case_id: str, intervention_id: str, db: Session = Dep
 @router.get("/{case_id}/plan", response_model=ResolutionPlanResponse)
 def get_resolution_plan(case_id: str, db: Session = Depends(get_db)):
     """Get the active resolution plan for a case."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     plan = service.get_resolution_plan(case_id)
     if not plan:
@@ -147,18 +159,25 @@ def get_resolution_plan(case_id: str, db: Session = Depends(get_db)):
 @router.post("/{case_id}/simulate", response_model=SimulationResponse)
 def simulate_intervention(case_id: str, request: SimulationRequest, db: Session = Depends(get_db)):
     """Run a deterministic simulation of an intervention."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
     service = InterventionEngine(db)
-    return service.run_simulation(case_id, request)
+    return service.run_simulation(case.case_id, request)
 
 @router.get("/{case_id}/simulation/runs", response_model=list[SimulationRunResponse])
 def get_simulation_runs(case_id: str, db: Session = Depends(get_db)):
     """Get history of simulation runs for a case."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.get_simulation_runs(case_id)
 
 @router.post("/{case_id}/simulation/constraints", response_model=DecisionAnalysisResponse)
 def update_simulation_constraints(case_id: str, request: SimulationRequest, db: Session = Depends(get_db)):
     """Update constraints and rerun ranking."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     constraints = {}
     if request.budget is not None: constraints["budget_limit"] = request.budget
@@ -173,14 +192,20 @@ def update_simulation_constraints(case_id: str, request: SimulationRequest, db: 
 @router.get("/{case_id}/predictions", response_model=list[PredictionResponse])
 def get_predictions(case_id: str, db: Session = Depends(get_db)):
     """Get model predictions for the case."""
+    case_id = resolve_case(case_id, db)
     service = InterventionEngine(db)
     return service.get_predictions(case_id)
 
 @router.get("/{case_id}/prediction")
 def get_baseline_prediction(case_id: str, db: Session = Depends(get_db)):
     """Get the 5-year do-nothing baseline prediction."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
     service = InterventionEngine(db)
-    prediction = service.generate_baseline_prediction(case_id)
+    prediction = service.generate_baseline_prediction(case.case_id)
     if not prediction:
         raise HTTPException(status_code=404, detail="Case prediction not found")
     return prediction
@@ -215,6 +240,17 @@ def get_case_complete(case_id: str, db: Session = Depends(get_db)):
     
     constraints = db.query(InterventionConstraint).filter(InterventionConstraint.case_id == actual_case_id).first()
     interventions = db.query(InterventionOption).filter(InterventionOption.case_id == actual_case_id).all()
+    
+    if not interventions:
+        from datetime import datetime, timedelta
+        intervention_service.generate_interventions(actual_case_id)
+        intervention_service.apply_constraints(actual_case_id, {
+            "budget_limit": 800000,
+            "deadline": datetime.utcnow() + timedelta(days=30),
+            "available_workers": 10
+        })
+        interventions = db.query(InterventionOption).filter(InterventionOption.case_id == actual_case_id).all()
+        constraints = db.query(InterventionConstraint).filter(InterventionConstraint.case_id == actual_case_id).first()
     
     # Get simulations and feedback - can mock or pull from decision analyses
     decision = db.query(DecisionAnalysis).filter(DecisionAnalysis.case_id == actual_case_id).order_by(DecisionAnalysis.created_at.desc()).first()
@@ -264,48 +300,14 @@ def get_case_complete(case_id: str, db: Session = Depends(get_db)):
         "memory": memory
     }
 
-@router.post("/{case_id}/simulate")
-def run_simulation(case_id: str, payload: dict, db: Session = Depends(get_db)):
-    """Run simulation on an intervention."""
-    # In a real app, this would run InterventionEngine
-    return {"status": "success", "message": "Simulation executed"}
 
-@router.post("/{case_id}/feedback")
-def submit_feedback(case_id: str, payload: dict, db: Session = Depends(get_db)):
-    """Submit officer feedback for reranking."""
-    return {"status": "success", "message": "Feedback recorded, reranking..."}
-
-@router.post("/{case_id}/decision")
-def submit_decision(case_id: str, payload: dict, db: Session = Depends(get_db)):
-    """Submit officer decision."""
-    return {"status": "success", "message": "Decision recorded"}
 
 @router.post("/{case_id}/roadmap")
 def generate_roadmap(case_id: str, payload: dict, db: Session = Depends(get_db)):
     """Generate roadmap after approval."""
     return {"status": "success", "message": "Roadmap generated"}
 
-@router.get("/{case_id}/cost-of-inaction", response_model=CostOfInactionResponse)
-def get_cost_of_inaction(case_id: str, db: Session = Depends(get_db)):
-    """Get the estimated cost of doing nothing for a case."""
-    fa_service = FailureAnalysisService(db)
-    case = fa_service.get_case(case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
-        
-    service = InterventionEngine(db)
-    return service.compute_cost_of_inaction(case.case_id)
 
-@router.get("/{case_id}/counterfactual", response_model=CounterfactualResponse)
-def get_counterfactual(case_id: str, db: Session = Depends(get_db)):
-    """Get counterfactual scenarios vs baseline."""
-    fa_service = FailureAnalysisService(db)
-    case = fa_service.get_case(case_id)
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
-        
-    service = InterventionEngine(db)
-    return service.compute_counterfactual(case.case_id)
 
 @router.post("/{case_id}/verify")
 def verify_field_evidence(case_id: str, payload: dict, db: Session = Depends(get_db)):

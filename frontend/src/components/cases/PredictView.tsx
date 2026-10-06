@@ -88,7 +88,7 @@ export function PredictView({ caseId, history }: { caseId: string, history?: His
   const riskBg = riskPercentage >= 80 ? 'bg-red-500' : riskPercentage >= 60 ? 'bg-orange-500' : riskPercentage >= 40 ? 'bg-yellow-500' : 'bg-emerald-500';
 
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.15 } } };
-  const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } } };
+  const itemVariants = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
 
   // Setup Timeline Events
   const timelineEvents = [];

@@ -17,9 +17,8 @@ export function OutcomeView({
   workOrder?: WorkOrderResponse,
   onLogged?: () => void
 }) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [triggerEvent, setTriggerEvent] = useState("Monsoon 2026 Phase 1");
-
+  
   const submitOutcomeMutation = useMutation({
     mutationFn: async () => {
       await outcomesApi.logOutcome({
@@ -43,15 +42,12 @@ export function OutcomeView({
     },
     onSuccess: () => {
       if (onLogged) onLogged();
-      setIsSubmitting(false);
-    },
-    onError: () => {
-      setIsSubmitting(false);
     }
   });
 
+  const isSubmitting = submitOutcomeMutation.isPending;
+
   const handleSimulateObservation = () => {
-    setIsSubmitting(true);
     submitOutcomeMutation.mutate();
   };
 
@@ -147,13 +143,19 @@ export function OutcomeView({
                     <option value="Unseasonal Heavy Downpour">Unseasonal Heavy Downpour</option>
                   </select>
                 </div>
-                
                 <button 
                   onClick={handleSimulateObservation}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20"
+                  disabled={isSubmitting}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
                 >
-                  <Play className="w-4 h-4 fill-white" /> Fast-Forward & Log Observation
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
+                  {isSubmitting ? "Compiling Telemetry..." : "Fast-Forward & Log Observation"}
                 </button>
+                {submitOutcomeMutation.isError && (
+                  <div className="mt-4 p-3 bg-red-950/30 border border-red-900/50 rounded-lg flex items-center justify-center gap-2 text-red-400 text-sm">
+                    <AlertTriangle className="w-4 h-4 text-red-500" /> Observation failed to log. Please try again.
+                  </div>
+                )}
               </>
             )}
           </div>

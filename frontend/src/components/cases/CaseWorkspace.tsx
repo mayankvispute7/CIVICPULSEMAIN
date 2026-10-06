@@ -15,6 +15,8 @@ import { OutcomeView } from "./OutcomeView";
 import { MemoryView } from "./MemoryView";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { BeautifulImpactSummary } from "./BeautifulImpactSummary";
+
 const STAGES = [
   { id: 'UNDERSTAND', label: 'Understand', short: 'What is happening?' },
   { id: 'INVESTIGATE', label: 'Investigate', short: 'What is connected?' },
@@ -178,9 +180,7 @@ export function CaseWorkspace({ caseId }: { caseId: string }) {
                      <div className="flex flex-col gap-6">
                         <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
                            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4">What is happening?</h2>
-                           <p className="text-slate-300 leading-relaxed text-lg">
-                             {caseData.impact_summary}
-                           </p>
+                           <BeautifulImpactSummary summary={caseData.impact_summary || ""} />
                         </div>
                         <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
                            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 mb-4">Related Signals</h2>

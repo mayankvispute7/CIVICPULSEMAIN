@@ -81,6 +81,13 @@ class OutcomeService:
         self._compare_predictions(case_id, outcome)
 
         self.db.commit()
+        
+        # Automatically update the site memory
+        from .learning_service import LearningService
+        ls = LearningService(self.db)
+        ls.update_site_memory(case.site_id)
+        self.db.commit()
+
         return outcome
 
     def _compare_predictions(self, case_id: str, outcome: OutcomeObservation):

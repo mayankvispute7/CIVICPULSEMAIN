@@ -22,6 +22,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
+from fastapi.responses import JSONResponse
+import traceback
+import sys
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "traceback": "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))}
+    )
+
 # Set all CORS enabled origins
 if settings.CORS_ORIGINS:
     app.add_middleware(

@@ -44,6 +44,8 @@ venv.bak/
 *.db3
 *.s3db
 *.sl3
+*-shm
+*-wal
 
 # OS generated files
 .DS_Store

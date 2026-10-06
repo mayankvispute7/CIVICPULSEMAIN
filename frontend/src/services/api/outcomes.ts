@@ -24,7 +24,7 @@ export const outcomesApi = {
   },
 
   logOutcome: async (request: any): Promise<OutcomeResponse> => {
-    return fetchApi<OutcomeResponse>('/outcomes/observations', {
+    return fetchApi<OutcomeResponse>('/outcomes', {
       method: 'POST',
       body: JSON.stringify(request)
     });

@@ -41,7 +41,8 @@ export const executionApi = {
 
   runVerification: async (workOrderId: string): Promise<VerificationResponse> => {
     return fetchApi<VerificationResponse>(`/execution/work-orders/${workOrderId}/verify`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ verified_by: "system_automation" })
     });
   }
 };

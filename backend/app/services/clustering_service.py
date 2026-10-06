@@ -291,7 +291,15 @@ class ClusteringService:
         return cluster
 
     def get_clusters(self) -> list[FailureCluster]:
-        return self.db.query(FailureCluster).order_by(FailureCluster.complaint_count.desc()).all()
+        clusters = self.db.query(FailureCluster).order_by(FailureCluster.complaint_count.desc()).all()
+        # Deduplicate by title to prevent repeated cluster names in UI after multiple uploads
+        seen_titles = set()
+        deduped = []
+        for c in clusters:
+            if c.title not in seen_titles:
+                seen_titles.add(c.title)
+                deduped.append(c)
+        return deduped
 
     def get_cluster(self, cluster_id: str) -> Optional[FailureCluster]:
         return self.db.query(FailureCluster).filter(FailureCluster.cluster_id == cluster_id).first()

@@ -45,6 +45,10 @@ export function ExecuteView({
   ]);
   const [chatInput, setChatInput] = useState('');
   const [activeTaskPrompt, setActiveTaskPrompt] = useState<string | null>(null);
+  const [delayPromptTask, setDelayPromptTask] = useState<string | null>(null);
+  const [delayReason, setDelayReason] = useState<string>('');
+  const [delayDays, setDelayDays] = useState<number>(1);
+  const [delayNotes, setDelayNotes] = useState<string>('');
   const [completedTasks, setCompletedTasks] = useState<Set<string>>(new Set());
   
   const handleChat = (e: React.FormEvent) => {
@@ -65,22 +69,50 @@ export function ExecuteView({
     }, 1000);
   };
 
-  const handleTaskCheck = (taskId: string) => {
+  const handleTaskCheck = (taskId: string, index: number) => {
+    // Enforce sequential completion
+    if (index > 0) {
+      for (let i = 0; i < index; i++) {
+        const prevTask = tasks[i];
+        if (prevTask.status !== 'COMPLETED' && !completedTasks.has(prevTask.task_id)) {
+          setChatMessages(prev => [...prev, {role: 'system', text: `Cannot start "${tasks[index].title}". Prerequisite task "${prevTask.title}" is not yet completed.`}]);
+          return;
+        }
+      }
+    }
     setActiveTaskPrompt(taskId);
   };
 
   const handleTaskTimeSubmit = (taskId: string, onTime: boolean) => {
-    setActiveTaskPrompt(null);
+    if (onTime) {
+      setActiveTaskPrompt(null);
+      setCompletedTasks(prev => {
+        const next = new Set(prev);
+        next.add(taskId);
+        return next;
+      });
+      setChatMessages(prev => [...prev, {role: 'system', text: `Task completed on schedule. Great progress.`}]);
+    } else {
+      setActiveTaskPrompt(null);
+      setDelayPromptTask(taskId);
+    }
+  };
+
+  const submitDelay = (taskId: string) => {
+    setDelayPromptTask(null);
     setCompletedTasks(prev => {
       const next = new Set(prev);
       next.add(taskId);
       return next;
     });
-    if (!onTime) {
-      setChatMessages(prev => [...prev, {role: 'system', text: `Task delayed. Recalculating schedule dependencies... Please provide reason if possible.`}]);
-    } else {
-      setChatMessages(prev => [...prev, {role: 'system', text: `Task completed on schedule. Great progress.`}]);
-    }
+    setChatMessages(prev => [
+      ...prev, 
+      {role: 'user', text: `Task Delayed by ${delayDays} days. Reason: ${delayReason || 'Not specified'}. ${delayNotes}`},
+      {role: 'system', text: `Delay logged. Recalculating schedule dependencies... Critical path extended by ${delayDays} days. Gantt chart updated.`}
+    ]);
+    setDelayReason('');
+    setDelayDays(1);
+    setDelayNotes('');
   };
 
   return (
@@ -236,12 +268,12 @@ export function ExecuteView({
                </h3>
              </div>
              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {tasks.map(task => {
+                {tasks.map((task, index) => {
                   const isCompleted = task.status === 'COMPLETED' || completedTasks.has(task.task_id);
                   return (
                     <div key={task.task_id} className={`bg-slate-800/40 border ${isCompleted ? 'border-emerald-900/50' : 'border-slate-700/50'} rounded-lg p-3 transition-colors`}>
                       <div className="flex items-start gap-3">
-                         <button onClick={() => !isCompleted && handleTaskCheck(task.task_id)} className="mt-0.5 cursor-pointer">
+                         <button onClick={() => !isCompleted && handleTaskCheck(task.task_id, index)} className="mt-0.5 cursor-pointer">
                            {isCompleted ? (
                              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                            ) : (
@@ -260,6 +292,35 @@ export function ExecuteView({
                               <div className="flex gap-2">
                                  <button onClick={() => handleTaskTimeSubmit(task.task_id, true)} className="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/50 rounded hover:bg-emerald-600/30 font-semibold transition-colors">Yes, on time</button>
                                  <button onClick={() => handleTaskTimeSubmit(task.task_id, false)} className="px-3 py-1.5 bg-red-600/20 text-red-400 border border-red-500/50 rounded hover:bg-red-600/30 font-semibold transition-colors">No, delayed</button>
+                              </div>
+                           </div>
+                         </motion.div>
+                      )}
+                      
+                      {delayPromptTask === task.task_id && (
+                         <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} className="mt-3 pl-8">
+                           <div className="bg-slate-900 p-3 rounded border border-red-900/50 text-xs">
+                              <p className="text-red-400 mb-3 font-bold uppercase tracking-wider">Report Delay Details</p>
+                              <div className="flex flex-col gap-4">
+                                <div>
+                                  <label className="text-slate-400 mb-1.5 block font-semibold">Reason for delay:</label>
+                                  <div className="flex gap-2 flex-wrap">
+                                    {['Weather', 'Worker Absence', 'Equipment Failure', 'Material Delay'].map(reason => (
+                                      <button key={reason} onClick={() => setDelayReason(reason)} className={`px-2 py-1 rounded border transition-colors ${delayReason === reason ? 'bg-red-600 border-red-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500'}`}>{reason}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <label className="text-slate-400 font-semibold">Delay Duration (Days):</label>
+                                  <input type="number" min="1" value={delayDays} onChange={e => setDelayDays(Number(e.target.value))} className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-slate-200 w-20 outline-none focus:border-red-500" />
+                                </div>
+                                <div>
+                                   <input type="text" value={delayNotes} onChange={e => setDelayNotes(e.target.value)} placeholder="Additional notes or text message..." className="bg-slate-950 border border-slate-700 rounded px-2 py-2 text-slate-200 w-full outline-none focus:border-red-500" />
+                                </div>
+                                <div className="flex justify-end gap-2 mt-1">
+                                  <button onClick={() => setDelayPromptTask(null)} className="px-3 py-1.5 bg-slate-800 text-slate-300 rounded hover:bg-slate-700 font-semibold transition-colors">Cancel</button>
+                                  <button onClick={() => submitDelay(task.task_id)} className="px-4 py-1.5 bg-red-600 text-white rounded hover:bg-red-500 font-bold transition-colors">Submit Delay Log</button>
+                                </div>
                               </div>
                            </div>
                          </motion.div>

@@ -52,14 +52,14 @@ class VerificationService:
         location_consistency, loc_dist = self._check_location(work_order, latitude, longitude)
         timestamp_consistency, time_diff = self._check_timestamp(captured_at)
         duplicate_sim, dup_check = self._check_duplicates(work_order_id, image_url)
-        visual_change = self._evaluate_visual_change(image_url)
+        visual_change = self._evaluate_visual_change(image_url, metadata_info or {})
         manipulation = self._check_manipulation(metadata_info or {})
 
         # Compute overall consistency
         overall = EvidenceConsistency.MEDIUM.value
-        if location_consistency == "MATCH" and timestamp_consistency == "PLAUSIBLE" and not manipulation:
+        if location_consistency == "MATCH" and timestamp_consistency == "PLAUSIBLE" and visual_change == "CONSISTENT_WITH_WORK" and not manipulation:
             overall = EvidenceConsistency.HIGH.value
-        elif location_consistency == "MISMATCH" or timestamp_consistency == "IMPLAUSIBLE" or manipulation:
+        elif location_consistency == "MISMATCH" or timestamp_consistency == "IMPLAUSIBLE" or visual_change == "INCONSISTENT" or manipulation:
             overall = EvidenceConsistency.LOW.value
 
         evidence = FieldEvidence(
@@ -96,10 +96,10 @@ class VerificationService:
         if not work_order:
             return None
 
-        # Get all evidence for this work order
+        # Get all evidence for this work order (only latest for demo re-upload purposes)
         evidence_list = self.db.query(FieldEvidence).filter(
             FieldEvidence.work_order_id == work_order_id
-        ).all()
+        ).order_by(FieldEvidence.captured_at.desc()).limit(1).all()
 
         checks = []
         confidence = 0.0
@@ -251,10 +251,20 @@ class VerificationService:
             
         return 0.1, "UNIQUE"
 
-    def _evaluate_visual_change(self, image_url: Optional[str]) -> str:
+    def _evaluate_visual_change(self, image_url: Optional[str], metadata_info: dict) -> str:
         """Simulate visual change evaluation."""
         if not image_url:
             return "UNKNOWN"
+        
+        # Mock logic: check filename from metadata for demo purposes
+        filename = metadata_info.get("filename", "").lower()
+        if "road" in filename or "satellite" in filename:
+            return "CONSISTENT_WITH_WORK"
+        
+        # For demo: any other name means it's irrelevant (like a signature)
+        if filename and filename != "unknown":
+            return "INCONSISTENT"
+            
         return "CONSISTENT_WITH_WORK"
 
     def _check_manipulation(self, metadata: dict) -> list[str]:
