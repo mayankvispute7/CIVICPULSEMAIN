@@ -393,9 +393,10 @@ class FailureAnalysisService:
     def _generate_historical_incidents(self, case: FailureCase, cluster: FailureCluster):
         """Generate synthetic historical incidents for demo."""
         from datetime import timedelta
-        import random
-
-        random.seed(hash(case.case_id) % 2**32)
+        import hashlib
+        
+        # Deterministic based on cluster_id
+        h = int(hashlib.md5(case.cluster_id.encode()).hexdigest(), 16)
 
         base_date = cluster.time_range_start or datetime(2026, 7, 1)
 
@@ -403,28 +404,28 @@ class FailureAnalysisService:
             {
                 "title": f"Previous {case.failure_type.lower().replace('_', ' ')} incident",
                 "description": "Similar waterlogging/infrastructure issue reported in the same area.",
-                "occurred_at": base_date - timedelta(days=random.randint(180, 365)),
+                "occurred_at": base_date - timedelta(days=180 + (h % 30)),
                 "intervention_taken": "Drain cleaning",
                 "intervention_outcome": "Temporary relief, recurrence after 3 months",
                 "recurrence_after_days": 90,
             },
             {
                 "title": f"Earlier {case.failure_type.lower().replace('_', ' ')} incident",
-                "occurred_at": base_date - timedelta(days=random.randint(400, 600)),
+                "occurred_at": base_date - timedelta(days=400 + (h % 50)),
                 "intervention_taken": "Debris removal and minor repair",
                 "intervention_outcome": "Partial improvement, problem persisted during heavy rain",
                 "recurrence_after_days": 120,
             },
             {
                 "title": f"Historical {case.failure_type.lower().replace('_', ' ')} report",
-                "occurred_at": base_date - timedelta(days=random.randint(700, 900)),
+                "occurred_at": base_date - timedelta(days=700 + (h % 50)),
                 "intervention_taken": "Emergency pumping",
                 "intervention_outcome": "Immediate relief only, no lasting improvement",
                 "recurrence_after_days": 45,
             },
             {
                 "title": f"Monsoon season {case.failure_type.lower().replace('_', ' ')}",
-                "occurred_at": base_date - timedelta(days=random.randint(365, 730)),
+                "occurred_at": base_date - timedelta(days=365 + (h % 20)),
                 "intervention_taken": "Desilting of drains",
                 "intervention_outcome": "Moderate improvement for one season",
                 "recurrence_after_days": 180,
@@ -462,8 +463,18 @@ class FailureAnalysisService:
         case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
         if case:
             return case
+        
         # If not found, try finding by cluster_id (since frontend routes using cluster_id)
-        return self.db.query(FailureCase).filter(FailureCase.cluster_id == case_id).first()
+        case = self.db.query(FailureCase).filter(FailureCase.cluster_id == case_id).first()
+        if case:
+            return case
+            
+        # If still not found, check if a cluster exists with this ID and create a case
+        cluster = self.db.query(FailureCluster).filter(FailureCluster.cluster_id == case_id).first()
+        if cluster:
+            return self.create_case_from_cluster(case_id)
+            
+        return None
 
     def get_case_evidence(self, case_id: str) -> list[Evidence]:
         case = self.get_case(case_id)

@@ -6,6 +6,7 @@ import enum
 class DataTruth(str, enum.Enum):
     """Classification of data provenance/truth."""
     REAL_DATA = "REAL_DATA"
+    IMPORTED_DATA = "IMPORTED_DATA"
     SYNTHETIC_DATA = "SYNTHETIC_DATA"
     MODEL_ESTIMATION = "MODEL_ESTIMATION"
     AI_GENERATED_TEXT = "AI_GENERATED_TEXT"

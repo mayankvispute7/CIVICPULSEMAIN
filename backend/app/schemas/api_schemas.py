@@ -177,7 +177,7 @@ class FailureCaseResponse(BaseModel):
     confidence: float = 0.0
     status: str
     fingerprint: Optional[dict] = None
-    failure_chain: Optional[list] = None
+    failure_chain: Optional[Any] = None
     created_at: datetime
     updated_at: datetime
     data_truth: str
@@ -423,6 +423,73 @@ class PredictionResponse(BaseModel):
     assumptions: list = []
     data_truth: str
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CasePredictionResponse(BaseModel):
+    case_id: str
+    prediction_type: str
+    horizon_years: int
+    current_risk_score: float
+    risk_level: str
+    recurrence_probability: float
+    expected_incidents: dict
+    expected_complaints: dict
+    exposure_level: str
+    yearly_projection: list = []
+    evidence_basis: list = []
+    uncertainties: list = []
+    methodology: str
+    data_origin: str
+
+    model_config = {"from_attributes": True}
+
+
+class SimulationRequest(BaseModel):
+    intervention_id: Optional[str] = None
+    budget: Optional[float] = None
+    deadline_days: Optional[int] = None
+    workers: Optional[int] = None
+    excavators: Optional[int] = None
+    road_disruption_tolerance: Optional[str] = None
+    maintenance_capacity: Optional[str] = None
+
+
+class SimulationResponse(BaseModel):
+    baseline: dict
+    intervention: Optional[dict] = None
+    feasibility: str
+    risk_before: float
+    risk_after: float
+    risk_reduction: float
+    recurrence_before: dict
+    recurrence_after: dict
+    complaint_burden_before: dict
+    complaint_burden_after: dict
+    cost: float
+    duration: int
+    resources: dict
+    maintenance: str
+    confidence: float
+    score: float
+    reasons: list = []
+    limitations: list = []
+
+    model_config = {"from_attributes": True}
+
+class SimulationRunResponse(BaseModel):
+    simulation_id: str
+    case_id: str
+    site_id: Optional[str] = None
+    intervention_id: Optional[str] = None
+    constraints: dict = {}
+    baseline_snapshot: dict = {}
+    result: dict = {}
+    score: Optional[float] = None
+    feasibility: Optional[str] = None
+    created_at: datetime
+    data_origin: str
 
     model_config = {"from_attributes": True}
 
@@ -755,3 +822,35 @@ class MapDataResponse(BaseModel):
     features: list[MapFeature]
     total: int
     bounds: Optional[dict] = None  # {min_lat, max_lat, min_lon, max_lon}
+
+
+# ─────────────────────────────────────────────────────────────
+# Complete Case View
+# ─────────────────────────────────────────────────────────────
+
+class CaseCompleteResponse(BaseModel):
+    model_config = {"from_attributes": True}
+    
+    case: FailureCaseResponse
+    cluster: ClusterResponse
+    site: Optional[SiteResponse] = None
+    complaints: list[ComplaintResponse] = []
+    evidence: list[EvidenceResponse] = []
+    failure_hypothesis: list[HypothesisResponse] = []
+    history: Optional[HistoryResponse] = None
+    prediction: Optional[CasePredictionResponse] = None
+    predictions: list[PredictionResponse] = []
+    approach_research: list[ReferenceCaseResponse] = []
+    constraints: Optional[ConstraintResponse] = None
+    interventions: list[InterventionResponse] = []
+    simulation_runs: list[dict] = []
+    officer_feedback: list[dict] = []
+    decision: Optional[DecisionAnalysisResponse] = None
+    roadmap: Optional[ResolutionPlanResponse] = None
+    work_order: Optional[WorkOrderResponse] = None
+    tasks: list[TaskResponse] = []
+    field_evidence: list[FieldEvidenceResponse] = []
+    verification: Optional[VerificationResponse] = None
+    outcome: Optional[OutcomeResponse] = None
+    memory: Optional[InfrastructureMemoryResponse] = None
+

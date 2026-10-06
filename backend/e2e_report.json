@@ -24,112 +24,112 @@
     "step": "4. Clustering",
     "endpoint": "/complaints/cluster",
     "status": "PASS",
-    "result": "Created 1 clusters",
+    "result": "Created 0 clusters",
     "error": null
   },
   {
     "step": "5. Cluster retrieval",
     "endpoint": "/complaints/clusters/all",
     "status": "PASS",
-    "result": "Selected Cluster ID: ae2a4602-0a82-4124-9886-7b8c8c6f4b4f",
+    "result": "Selected Cluster ID: 9e58423c-8124-4445-8274-f69ac18e6392",
     "error": null
   },
   {
     "step": "6. Failure case creation",
-    "endpoint": "/cases/from-cluster/ae2a4602-0a82-4124-9886-7b8c8c6f4b4f",
+    "endpoint": "/cases/from-cluster/9e58423c-8124-4445-8274-f69ac18e6392",
     "status": "PASS",
-    "result": "Created Case: 66936ca1-a3fd-45a4-8af2-8d0c2307ed14",
+    "result": "Created Case: d651bd6d-c254-4241-8402-5a5a7e3caf1f",
     "error": null
   },
   {
     "step": "7. Failure analysis",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f",
     "status": "PASS",
     "result": "Retrieved analysis",
     "error": null
   },
   {
     "step": "8. Evidence/fingerprint",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/evidence",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/evidence",
     "status": "PASS",
     "result": "Retrieved 4 evidence items",
     "error": null
   },
   {
     "step": "9. History",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/history",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/history",
     "status": "PASS",
     "result": "Retrieved history",
     "error": null
   },
   {
     "step": "10. Intervention generation",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/interventions/generate",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/interventions/generate",
     "status": "PASS",
     "result": "Generated 5 interventions",
     "error": null
   },
   {
     "step": "11. Constraints",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/constraints",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/constraints",
     "status": "PASS",
     "result": "Applied constraints",
     "error": null
   },
   {
     "step": "12. Decision analysis",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/analyze",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/analyze",
     "status": "PASS",
-    "result": "Ranked interventions. Top choice: 50302c35-ea73-4457-a63c-98398679cce6",
+    "result": "Ranked interventions. Top choice: dca3ede9-b8e9-495f-9a9f-e8381f810769",
     "error": null
   },
   {
     "step": "13. Resolution plan",
-    "endpoint": "/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/plan/50302c35-ea73-4457-a63c-98398679cce6",
+    "endpoint": "/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/plan/dca3ede9-b8e9-495f-9a9f-e8381f810769",
     "status": "PASS",
-    "result": "Created plan: f8d394fe-7509-4c2f-86e4-dce6c4f403a2",
+    "result": "Created plan: d4eafa69-4d7e-4096-ab71-fcad939e0594",
     "error": null
   },
   {
     "step": "14. Plan approval",
-    "endpoint": "/execution/plans/f8d394fe-7509-4c2f-86e4-dce6c4f403a2/approve",
+    "endpoint": "/execution/plans/d4eafa69-4d7e-4096-ab71-fcad939e0594/approve",
     "status": "PASS",
     "result": "Plan approved",
     "error": null
   },
   {
     "step": "15. Work order creation",
-    "endpoint": "/execution/plans/f8d394fe-7509-4c2f-86e4-dce6c4f403a2/work-order",
+    "endpoint": "/execution/plans/d4eafa69-4d7e-4096-ab71-fcad939e0594/work-order",
     "status": "PASS",
-    "result": "Created Work Order: 1a6cfaf6-ee4d-4f4f-b22d-ec601364dbea",
+    "result": "Created Work Order: d47c442a-98d6-4b09-bc69-c0aa98845077",
     "error": null
   },
   {
     "step": "16. Task retrieval",
-    "endpoint": "/execution/work-orders/1a6cfaf6-ee4d-4f4f-b22d-ec601364dbea/tasks",
+    "endpoint": "/execution/work-orders/d47c442a-98d6-4b09-bc69-c0aa98845077/tasks",
     "status": "PASS",
     "result": "Retrieved 6 tasks",
     "error": null
   },
   {
     "step": "17. Task start",
-    "endpoint": "/execution/tasks/b9c8e181-0dc1-4ba5-be47-9d4f328d8f9f/start",
+    "endpoint": "/execution/tasks/d6facf60-3d7b-4d25-9bd9-3766338dd061/start",
     "status": "PASS",
-    "result": "Started task b9c8e181-0dc1-4ba5-be47-9d4f328d8f9f",
+    "result": "Started task d6facf60-3d7b-4d25-9bd9-3766338dd061",
     "error": null
   },
   {
     "step": "19. Dynamic replanning",
-    "endpoint": "/execution/tasks/b9c8e181-0dc1-4ba5-be47-9d4f328d8f9f/delay",
+    "endpoint": "/execution/tasks/d6facf60-3d7b-4d25-9bd9-3766338dd061/delay",
     "status": "PASS",
     "result": "Triggered delay and replanning",
     "error": null
   },
   {
     "step": "18. Task completion",
-    "endpoint": "/execution/tasks/b9c8e181-0dc1-4ba5-be47-9d4f328d8f9f/complete",
+    "endpoint": "/execution/tasks/d6facf60-3d7b-4d25-9bd9-3766338dd061/complete",
     "status": "PASS",
-    "result": "Completed task b9c8e181-0dc1-4ba5-be47-9d4f328d8f9f",
+    "result": "Completed task d6facf60-3d7b-4d25-9bd9-3766338dd061",
     "error": null
   },
   {
@@ -141,7 +141,7 @@
   },
   {
     "step": "21. Verification",
-    "endpoint": "/execution/work-orders/1a6cfaf6-ee4d-4f4f-b22d-ec601364dbea/verify",
+    "endpoint": "/execution/work-orders/d47c442a-98d6-4b09-bc69-c0aa98845077/verify",
     "status": "PASS",
     "result": "Work order verified",
     "error": null
@@ -155,14 +155,14 @@
   },
   {
     "step": "23. Prediction vs reality",
-    "endpoint": "/outcomes/cases/66936ca1-a3fd-45a4-8af2-8d0c2307ed14/comparisons",
+    "endpoint": "/outcomes/cases/d651bd6d-c254-4241-8402-5a5a7e3caf1f/comparisons",
     "status": "PASS",
     "result": "Retrieved comparison",
     "error": null
   },
   {
     "step": "24. Infrastructure memory",
-    "endpoint": "/outcomes/sites/8c7ab626-3d03-49c8-8c65-d0e905803ec6/memory",
+    "endpoint": "/outcomes/sites/2cf6abf6-ef34-4183-af31-74e67919a961/memory",
     "status": "PASS",
     "result": "Retrieved infrastructure memory",
     "error": null

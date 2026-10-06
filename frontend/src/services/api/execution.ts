@@ -30,5 +30,18 @@ export const executionApi = {
   
   getReplanEvents: async (workOrderId: string): Promise<ReplanEventResponse[]> => {
     return fetchApi<ReplanEventResponse[]>(`/execution/work-orders/${workOrderId}/replans`);
+  },
+
+  submitFieldEvidence: async (request: any): Promise<FieldEvidenceResponse> => {
+    return fetchApi<FieldEvidenceResponse>('/execution/evidence', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    });
+  },
+
+  runVerification: async (workOrderId: string): Promise<VerificationResponse> => {
+    return fetchApi<VerificationResponse>(`/execution/work-orders/${workOrderId}/verify`, {
+      method: 'POST'
+    });
   }
 };

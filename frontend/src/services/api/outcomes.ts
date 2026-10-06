@@ -21,5 +21,12 @@ export const outcomesApi = {
 
   getMemory: async (siteId: string): Promise<InfrastructureMemoryResponse> => {
     return fetchApi<InfrastructureMemoryResponse>(`/outcomes/sites/${siteId}/memory`);
+  },
+
+  logOutcome: async (request: any): Promise<OutcomeResponse> => {
+    return fetchApi<OutcomeResponse>('/outcomes/observations', {
+      method: 'POST',
+      body: JSON.stringify(request)
+    });
   }
 };

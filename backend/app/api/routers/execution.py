@@ -36,6 +36,12 @@ def create_work_order(plan_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Plan not found or not approved")
     return wo
 
+@router.get("/work-orders", response_model=list[WorkOrderResponse])
+def list_work_orders(db: Session = Depends(get_db)):
+    """Get all work orders."""
+    from app.models.domain import WorkOrder
+    return db.query(WorkOrder).order_by(WorkOrder.created_at.desc()).all()
+
 @router.get("/work-orders/{work_order_id}", response_model=WorkOrderResponse)
 def get_work_order(work_order_id: str, db: Session = Depends(get_db)):
     """Get work order details."""

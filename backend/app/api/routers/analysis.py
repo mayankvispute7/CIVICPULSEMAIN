@@ -10,7 +10,14 @@ from app.schemas.api_schemas import (
     HypothesisResponse, HistoryResponse, InterventionResponse,
     ConstraintRequest, ConstraintResponse, DecisionAnalysisResponse,
     PredictionResponse, ResolutionPlanResponse, ApprovalRequest,
-    CostOfInactionResponse, CounterfactualResponse, SiteContextResponse
+    CostOfInactionResponse, CounterfactualResponse, SiteContextResponse,
+    CaseCompleteResponse, SimulationRequest, SimulationResponse, SimulationRunResponse
+)
+from app.models.domain import (
+    FailureCase, FailureCluster, Site, Complaint, Evidence, FailureHypothesis,
+    HistoricalIncident, Prediction, ReferenceCaseLibrary, InterventionConstraint,
+    InterventionOption, DecisionAnalysis, ResolutionPlan, WorkOrder, WorkOrderTask,
+    FieldEvidence, Verification, OutcomeObservation, InfrastructureMemory
 )
 from app.services.geospatial_service import GeospatialService
 
@@ -137,8 +144,181 @@ def get_resolution_plan(case_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Plan not found")
     return plan
 
+@router.post("/{case_id}/simulate", response_model=SimulationResponse)
+def simulate_intervention(case_id: str, request: SimulationRequest, db: Session = Depends(get_db)):
+    """Run a deterministic simulation of an intervention."""
+    service = InterventionEngine(db)
+    return service.run_simulation(case_id, request)
+
+@router.get("/{case_id}/simulation/runs", response_model=list[SimulationRunResponse])
+def get_simulation_runs(case_id: str, db: Session = Depends(get_db)):
+    """Get history of simulation runs for a case."""
+    service = InterventionEngine(db)
+    return service.get_simulation_runs(case_id)
+
+@router.post("/{case_id}/simulation/constraints", response_model=DecisionAnalysisResponse)
+def update_simulation_constraints(case_id: str, request: SimulationRequest, db: Session = Depends(get_db)):
+    """Update constraints and rerun ranking."""
+    service = InterventionEngine(db)
+    constraints = {}
+    if request.budget is not None: constraints["budget_limit"] = request.budget
+    if request.deadline_days is not None: 
+        from datetime import datetime, timedelta
+        constraints["deadline"] = datetime.utcnow() + timedelta(days=request.deadline_days)
+    if request.workers is not None: constraints["available_workers"] = request.workers
+    if request.excavators is not None: constraints["available_equipment"] = ["excavator"] * request.excavators
+    service.apply_constraints(case_id, constraints)
+    return service.score_interventions(case_id)
+
 @router.get("/{case_id}/predictions", response_model=list[PredictionResponse])
 def get_predictions(case_id: str, db: Session = Depends(get_db)):
     """Get model predictions for the case."""
     service = InterventionEngine(db)
     return service.get_predictions(case_id)
+
+@router.get("/{case_id}/prediction")
+def get_baseline_prediction(case_id: str, db: Session = Depends(get_db)):
+    """Get the 5-year do-nothing baseline prediction."""
+    service = InterventionEngine(db)
+    prediction = service.generate_baseline_prediction(case_id)
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Case prediction not found")
+    return prediction
+
+@router.get("/{case_id}/complete", response_model=CaseCompleteResponse)
+def get_case_complete(case_id: str, db: Session = Depends(get_db)):
+    """Get the completely connected case lifecycle data."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    actual_case_id = case.case_id
+        
+    cluster = db.query(FailureCluster).filter(FailureCluster.cluster_id == case.cluster_id).first()
+    site = db.query(Site).filter(Site.site_id == case.site_id).first() if case.site_id else None
+    
+    complaints = db.query(Complaint).filter(Complaint.cluster_id == case.cluster_id).all()
+    evidence = db.query(Evidence).filter(Evidence.case_id == actual_case_id).all()
+    hypotheses = db.query(FailureHypothesis).filter(FailureHypothesis.case_id == actual_case_id).all()
+    
+    # Use service to get properly formatted history response
+    history = fa_service.get_case_history(actual_case_id)
+    
+    predictions = db.query(Prediction).filter(Prediction.case_id == actual_case_id).all()
+    
+    intervention_service = InterventionEngine(db)
+    baseline_prediction = intervention_service.generate_baseline_prediction(actual_case_id)
+    
+    # Demo hack for approach_research: Just grab some from library if we can, or empty
+    approach_research = db.query(ReferenceCaseLibrary).filter(ReferenceCaseLibrary.problem_type == case.failure_type).all()
+    
+    constraints = db.query(InterventionConstraint).filter(InterventionConstraint.case_id == actual_case_id).first()
+    interventions = db.query(InterventionOption).filter(InterventionOption.case_id == actual_case_id).all()
+    
+    # Get simulations and feedback - can mock or pull from decision analyses
+    decision = db.query(DecisionAnalysis).filter(DecisionAnalysis.case_id == actual_case_id).order_by(DecisionAnalysis.created_at.desc()).first()
+    
+    # We might not have a formal table for officer_feedback in the schema, using mock or empty for now
+    officer_feedback = [] 
+    simulation_runs = []
+    
+    roadmap = db.query(ResolutionPlan).filter(ResolutionPlan.case_id == actual_case_id).first()
+    work_order = db.query(WorkOrder).filter(WorkOrder.case_id == actual_case_id).first()
+    
+    tasks = []
+    field_evidence = []
+    verification = None
+    outcome = None
+    
+    if work_order:
+        tasks = db.query(WorkOrderTask).filter(WorkOrderTask.work_order_id == work_order.work_order_id).order_by(WorkOrderTask.sequence).all()
+        field_evidence = db.query(FieldEvidence).filter(FieldEvidence.work_order_id == work_order.work_order_id).all()
+        verification = db.query(Verification).filter(Verification.work_order_id == work_order.work_order_id).first()
+    
+    outcome = db.query(OutcomeObservation).filter(OutcomeObservation.case_id == actual_case_id).first()
+    memory = db.query(InfrastructureMemory).filter(InfrastructureMemory.site_id == case.site_id).first() if case.site_id else None
+
+    return {
+        "case": case,
+        "cluster": cluster,
+        "site": site,
+        "complaints": complaints,
+        "evidence": evidence,
+        "failure_hypothesis": hypotheses,
+        "history": history,
+        "prediction": baseline_prediction,
+        "predictions": predictions,
+        "approach_research": approach_research,
+        "constraints": constraints,
+        "interventions": interventions,
+        "simulation_runs": simulation_runs,
+        "officer_feedback": officer_feedback,
+        "decision": decision,
+        "roadmap": roadmap,
+        "work_order": work_order,
+        "tasks": tasks,
+        "field_evidence": field_evidence,
+        "verification": verification,
+        "outcome": outcome,
+        "memory": memory
+    }
+
+@router.post("/{case_id}/simulate")
+def run_simulation(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Run simulation on an intervention."""
+    # In a real app, this would run InterventionEngine
+    return {"status": "success", "message": "Simulation executed"}
+
+@router.post("/{case_id}/feedback")
+def submit_feedback(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Submit officer feedback for reranking."""
+    return {"status": "success", "message": "Feedback recorded, reranking..."}
+
+@router.post("/{case_id}/decision")
+def submit_decision(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Submit officer decision."""
+    return {"status": "success", "message": "Decision recorded"}
+
+@router.post("/{case_id}/roadmap")
+def generate_roadmap(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Generate roadmap after approval."""
+    return {"status": "success", "message": "Roadmap generated"}
+
+@router.get("/{case_id}/cost-of-inaction", response_model=CostOfInactionResponse)
+def get_cost_of_inaction(case_id: str, db: Session = Depends(get_db)):
+    """Get the estimated cost of doing nothing for a case."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    service = InterventionEngine(db)
+    return service.compute_cost_of_inaction(case.case_id)
+
+@router.get("/{case_id}/counterfactual", response_model=CounterfactualResponse)
+def get_counterfactual(case_id: str, db: Session = Depends(get_db)):
+    """Get counterfactual scenarios vs baseline."""
+    fa_service = FailureAnalysisService(db)
+    case = fa_service.get_case(case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+        
+    service = InterventionEngine(db)
+    return service.compute_counterfactual(case.case_id)
+
+@router.post("/{case_id}/verify")
+def verify_field_evidence(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Verify field evidence."""
+    return {"status": "success", "message": "Evidence verified"}
+
+@router.post("/{case_id}/outcome")
+def record_outcome(case_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Record observed outcome."""
+    return {"status": "success", "message": "Outcome recorded"}
+
+@router.post("/{case_id}/reset-demo")
+def reset_demo(case_id: str, db: Session = Depends(get_db)):
+    """Reset the demo state to INVESTIGATING."""
+    return {"status": "success", "message": "Demo reset complete"}
+

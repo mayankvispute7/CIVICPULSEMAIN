@@ -683,3 +683,31 @@ export interface MapDataResponse {
   total: number;
   bounds?: Record<string, any>; // {min_lat, max_lat, min_lon, max_lon}
 }
+
+// ─────────────────────────────────────────────────────────────
+// Complete Case View
+// ─────────────────────────────────────────────────────────────
+
+export interface CaseCompleteResponse {
+  case: FailureCaseResponse;
+  cluster: ClusterResponse;
+  site?: SiteResponse;
+  complaints: ComplaintResponse[];
+  evidence: EvidenceResponse[];
+  failure_hypothesis: HypothesisResponse[];
+  history?: HistoryResponse;
+  predictions: PredictionResponse[];
+  approach_research: ReferenceCaseResponse[];
+  constraints?: ConstraintResponse;
+  interventions: InterventionResponse[];
+  simulation_runs: any[];
+  officer_feedback: any[];
+  decision?: DecisionAnalysisResponse;
+  roadmap?: ResolutionPlanResponse;
+  work_order?: WorkOrderResponse;
+  tasks: TaskResponse[];
+  field_evidence: FieldEvidenceResponse[];
+  verification?: VerificationResponse;
+  outcome?: OutcomeResponse;
+  memory?: InfrastructureMemoryResponse;
+}

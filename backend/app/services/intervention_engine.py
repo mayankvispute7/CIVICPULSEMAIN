@@ -14,7 +14,6 @@ Handles:
 
 import logging
 import math
-import random
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -22,7 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.models.domain import (
     FailureCase, InterventionOption, InterventionConstraint,
-    DecisionAnalysis, Prediction, ResolutionPlan, Evidence
+    DecisionAnalysis, Prediction, ResolutionPlan, Evidence,
+    SimulationRun
 )
 from app.models.enums import DataTruth, ApprovalState, FailureType
 
@@ -32,71 +32,116 @@ logger = logging.getLogger(__name__)
 INTERVENTION_TEMPLATES = {
     FailureType.WATERLOGGING.value: [
         {
-            "title": "Do Nothing (Baseline)",
-            "type": "do_nothing",
-            "description": "No intervention. Maintain current state.",
-            "base_cost": 0,
-            "duration_days": 0,
-            "workers": 0,
-            "risk_reduction": 0.0,
-            "recurrence_outlook": "Continued recurrence expected during every moderate+ rainfall event",
-            "maintenance_burden": "None",
-        },
-        {
-            "title": "Drain Cleaning & Desilting",
+            "title": "Emergency Drain Cleaning",
             "type": "drain_cleaning",
-            "description": "Remove accumulated silt, debris, and blockages from existing drainage channels.",
-            "base_cost": 35000,
+            "description": "Immediate removal of silt and debris to restore baseline capacity.",
+            "base_cost": 120000,
             "duration_days": 3,
             "workers": 4,
-            "equipment": ["vacuum_tanker", "jetting_machine"],
+            "equipment": ["excavator", "vacuum_tanker"],
             "materials": [],
-            "risk_reduction": 0.35,
-            "recurrence_outlook": "Temporary relief, likely recurrence within 3-6 months",
-            "maintenance_burden": "Requires repeated cleaning every 3-4 months",
+            "risk_reduction": 0.25,
+            "recurrence_outlook": "Temporary relief, likely recurrence within months",
+            "maintenance_burden": "High",
             "future_savings": 15000,
         },
         {
-            "title": "Additional Drainage Inlets",
-            "type": "additional_inlet",
-            "description": "Install 2-3 additional storm water inlets to increase drainage access capacity.",
-            "base_cost": 85000,
-            "duration_days": 7,
-            "workers": 6,
-            "equipment": ["excavator", "concrete_mixer"],
-            "materials": ["concrete", "inlet_grates", "connecting_pipes"],
-            "risk_reduction": 0.55,
-            "recurrence_outlook": "Significant reduction; moderate events manageable",
-            "maintenance_burden": "Annual inlet cleaning",
+            "title": "Blocked Inlet Rehabilitation",
+            "type": "inlet_rehab",
+            "description": "Clear and repair damaged or obstructed storm drain inlets.",
+            "base_cost": 220000,
+            "duration_days": 4,
+            "workers": 4,
+            "equipment": ["excavator", "compactor"],
+            "materials": ["concrete", "inlet_grates"],
+            "risk_reduction": 0.42,
+            "recurrence_outlook": "Moderate relief, manageable during normal rain",
+            "maintenance_burden": "Medium",
             "future_savings": 40000,
         },
         {
-            "title": "Drainage Capacity Upgrade",
-            "type": "capacity_increase",
-            "description": "Replace undersized drain section with larger capacity pipe/channel and improve gradient.",
-            "base_cost": 250000,
-            "duration_days": 21,
-            "workers": 10,
-            "equipment": ["excavator", "crane", "concrete_mixer", "compactor"],
-            "materials": ["RCC_pipes_900mm", "concrete", "gravel", "backfill"],
-            "risk_reduction": 0.80,
-            "recurrence_outlook": "Low probability of recurrence for design-standard events",
-            "maintenance_burden": "Routine annual inspection",
-            "future_savings": 120000,
+            "title": "Drain Repair",
+            "type": "drain_repair",
+            "description": "Repair structural damage in existing drainage channels without full replacement.",
+            "base_cost": 450000,
+            "duration_days": 6,
+            "workers": 4,
+            "equipment": ["excavator", "concrete_mixer"],
+            "materials": ["concrete", "rebar"],
+            "risk_reduction": 0.58,
+            "recurrence_outlook": "Significant relief for 3-5 years",
+            "maintenance_burden": "Medium",
+            "future_savings": 80000,
         },
         {
-            "title": "Comprehensive Drainage Rehabilitation",
-            "type": "drain_rehabilitation",
-            "description": "Full rehabilitation: new drain alignment, increased capacity, inlet upgrades, terrain regrading.",
-            "base_cost": 450000,
-            "duration_days": 35,
-            "workers": 15,
-            "equipment": ["excavator", "crane", "concrete_mixer", "compactor", "grader"],
-            "materials": ["RCC_pipes_1200mm", "concrete", "gravel", "inlet_grates", "manhole_covers"],
-            "risk_reduction": 0.92,
+            "title": "Drain Capacity Upgrade",
+            "type": "capacity_increase",
+            "description": "Replace undersized drain section with larger capacity pipe/channel.",
+            "base_cost": 800000,
+            "duration_days": 12,
+            "workers": 8,
+            "equipment": ["excavator", "excavator", "crane"],
+            "materials": ["RCC_pipes_900mm", "concrete"],
+            "risk_reduction": 0.75,
+            "recurrence_outlook": "Low probability of recurrence for design events",
+            "maintenance_burden": "Low",
+            "future_savings": 150000,
+        },
+        {
+            "title": "Additional Inlet",
+            "type": "additional_inlet",
+            "description": "Install additional storm water inlets to increase surface runoff capture.",
+            "base_cost": 300000,
+            "duration_days": 5,
+            "workers": 5,
+            "equipment": ["excavator", "concrete_mixer"],
+            "materials": ["concrete", "pipes"],
+            "risk_reduction": 0.50,
+            "recurrence_outlook": "Improved surface drainage",
+            "maintenance_burden": "Medium",
+            "future_savings": 50000,
+        },
+        {
+            "title": "Flow Diversion",
+            "type": "flow_diversion",
+            "description": "Divert upstream flow to alternative channels to reduce local load.",
+            "base_cost": 650000,
+            "duration_days": 9,
+            "workers": 6,
+            "equipment": ["excavator", "grader"],
+            "materials": ["concrete", "pipes"],
+            "risk_reduction": 0.65,
+            "recurrence_outlook": "Significant reduction in peak load",
+            "maintenance_burden": "Medium",
+            "future_savings": 100000,
+        },
+        {
+            "title": "Road Regrading",
+            "type": "road_regrading",
+            "description": "Regrade the road surface to eliminate depressions and direct water to inlets.",
+            "base_cost": 500000,
+            "duration_days": 7,
+            "workers": 6,
+            "equipment": ["grader", "paver", "roller"],
+            "materials": ["asphalt"],
+            "risk_reduction": 0.60,
+            "recurrence_outlook": "Eliminates local ponding",
+            "maintenance_burden": "Low",
+            "future_savings": 90000,
+        },
+        {
+            "title": "Combined Drainage Intervention",
+            "type": "combined",
+            "description": "Comprehensive upgrade including capacity increase, inlets, and regrading.",
+            "base_cost": 1500000,
+            "duration_days": 20,
+            "workers": 12,
+            "equipment": ["excavator", "crane", "grader", "paver"],
+            "materials": ["RCC_pipes_1200mm", "concrete", "asphalt"],
+            "risk_reduction": 0.95,
             "recurrence_outlook": "Minimal recurrence probability for 10+ years",
-            "maintenance_burden": "Standard municipal maintenance schedule",
-            "future_savings": 300000,
+            "maintenance_burden": "Low",
+            "future_savings": 400000,
         },
     ],
     FailureType.ROAD_DAMAGE.value: [
@@ -148,15 +193,9 @@ class InterventionEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    def _resolve_case(self, case_id: str) -> tuple[Optional[FailureCase], str]:
-        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
-        if not case:
-            case = self.db.query(FailureCase).filter(FailureCase.cluster_id == case_id).first()
-        return case, (case.case_id if case else case_id)
-
     def generate_interventions(self, case_id: str) -> list[InterventionOption]:
         """Generate intervention options for a failure case."""
-        case, case_id = self._resolve_case(case_id)
+        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
         if not case:
             return []
 
@@ -176,10 +215,12 @@ class InterventionEngine:
         for i, template in enumerate(templates):
             # Parameterize based on case specifics
             cost = template.get("base_cost", 0)
-            random.seed(hash(case_id + str(i)))
+            import hashlib
+            h = int(hashlib.md5(f"{case_id}_{i}".encode()).hexdigest(), 16)
 
-            # Add some variance
-            cost_variance = cost * random.uniform(-0.1, 0.15)
+            # Deterministic variance between -0.1 and +0.15
+            variance_factor = -0.1 + ((h % 100) / 100.0) * 0.25
+            cost_variance = cost * variance_factor
             adjusted_cost = max(0, cost + cost_variance)
 
             option = InterventionOption(
@@ -218,7 +259,6 @@ class InterventionEngine:
 
     def apply_constraints(self, case_id: str, constraints: dict) -> InterventionConstraint:
         """Create or update constraints for a case."""
-        case, case_id = self._resolve_case(case_id)
         # Check if constraints already exist
         existing = self.db.query(InterventionConstraint).filter(
             InterventionConstraint.case_id == case_id
@@ -252,7 +292,6 @@ class InterventionEngine:
         weights: Optional[dict] = None,
     ) -> DecisionAnalysis:
         """Score and rank interventions with transparent breakdown."""
-        case, case_id = self._resolve_case(case_id)
         default_weights = {
             "budget_fit": 20,
             "impact": 25,
@@ -384,7 +423,7 @@ class InterventionEngine:
 
     def compute_cost_of_inaction(self, case_id: str) -> dict:
         """Estimate the cost of doing nothing."""
-        case, case_id = self._resolve_case(case_id)
+        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
         if not case:
             return {}
 
@@ -426,9 +465,100 @@ class InterventionEngine:
             "data_truth": DataTruth.MODEL_ESTIMATION.value,
         }
 
+    def generate_baseline_prediction(self, case_id: str) -> dict:
+        """Generate a deterministic 5-year do-nothing baseline prediction."""
+        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
+        if not case:
+            return {}
+
+        from app.models.domain import Complaint, HistoricalIncident, Evidence
+        complaints = self.db.query(Complaint).filter(Complaint.cluster_id == case.cluster_id).all()
+        incidents = self.db.query(HistoricalIncident).filter(HistoricalIncident.case_id == case_id).all()
+        
+        num_incidents = len(incidents)
+        num_complaints = len(complaints)
+
+        # Deterministic Weights
+        # Historical recurrence = 25%
+        # Rainfall relationship = 20%
+        # Infrastructure condition = 25%
+        # Current complaint pressure = 15%
+        # Previous intervention recurrence = 15%
+        
+        hist_score = min(1.0, num_incidents / 5) * 0.25
+        rain_score = 0.8 * 0.20
+        infra_score = 0.75 * 0.25
+        complaint_score = min(1.0, num_complaints / 50) * 0.15
+        
+        # Check previous intervention recurrence
+        prev_interventions = [inc for inc in incidents if inc.intervention_taken]
+        prev_interv_score = 0.8 * 0.15 if prev_interventions else 0.4 * 0.15
+
+        current_risk_score = hist_score + rain_score + infra_score + complaint_score + prev_interv_score
+        current_risk_score = round(current_risk_score, 2)
+
+        if current_risk_score >= 0.8:
+            risk_level = "CRITICAL"
+        elif current_risk_score >= 0.6:
+            risk_level = "HIGH"
+        elif current_risk_score >= 0.4:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
+
+        # expected incidents range (5 years total)
+        base_annual_incidents = max(1, num_incidents / 2)
+        min_inc = int(base_annual_incidents * 4)
+        max_inc = int(base_annual_incidents * 6)
+
+        min_comp = int(num_complaints * 0.8)
+        max_comp = int(num_complaints * 1.5)
+
+        yearly = []
+        current_year = datetime.utcnow().year
+        for i in range(5):
+            year_risk = min(1.0, current_risk_score + i * 0.02)
+            yearly.append({
+                "year": current_year + i,
+                "risk": round(year_risk, 2),
+                "incident_min": max(0, int((min_inc / 5) * (1 + i * 0.1))),
+                "incident_max": max(1, int((max_inc / 5) * (1 + i * 0.15))),
+                "complaint_min": int((min_comp / 5) * (1 + i * 0.05)),
+                "complaint_max": int((max_comp / 5) * (1 + i * 0.1)),
+                "exposure": risk_level,
+                "data_origin": "MODEL_ESTIMATION"
+            })
+
+        return {
+            "case_id": case_id,
+            "prediction_type": "DO_NOTHING_BASELINE",
+            "horizon_years": 5,
+            "current_risk_score": current_risk_score,
+            "risk_level": risk_level,
+            "recurrence_probability": current_risk_score,
+            "expected_incidents": {"min": min_inc, "max": max_inc},
+            "expected_complaints": {"min": min_comp, "max": max_comp},
+            "exposure_level": risk_level,
+            "yearly_projection": yearly,
+            "evidence_basis": [
+                {"label": "Historical recurrence", "value": f"{num_incidents} incidents", "confidence": "HIGH", "data_origin": "REAL DATA"},
+                {"label": "Rainfall relationship", "value": "Strong correlation", "confidence": "MEDIUM", "data_origin": "MODEL ESTIMATION"},
+                {"label": "Infrastructure condition", "value": "Degraded", "confidence": "HIGH", "data_origin": "MODEL ESTIMATION"},
+                {"label": "Current complaint pressure", "value": f"{num_complaints} complaints", "confidence": "HIGH", "data_origin": "REAL DATA"},
+                {"label": "Previous intervention recurrence", "value": "Recurred" if prev_interventions else "None recorded", "confidence": "MEDIUM", "data_origin": "REAL DATA"}
+            ],
+            "uncertainties": [
+                "Future rainfall is unknown",
+                "Infrastructure defects may be unobserved",
+                "Complaint reporting behaviour may change",
+                "Historical records may be incomplete"
+            ],
+            "methodology": "Weighted screening model (Historical 25%, Rainfall 20%, Infrastructure 25%, Complaints 15%, Previous 15%)",
+            "data_origin": "MODEL_ESTIMATION"
+        }
+
     def compute_counterfactual(self, case_id: str) -> dict:
         """Compare do-nothing vs each intervention scenario."""
-        case, case_id = self._resolve_case(case_id)
         interventions = self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id
         ).order_by(InterventionOption.rank).all()
@@ -467,7 +597,6 @@ class InterventionEngine:
 
     def create_predictions(self, case_id: str) -> list[Prediction]:
         """Create prediction records for intervention outcomes."""
-        case, case_id = self._resolve_case(case_id)
         interventions = self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id,
             InterventionOption.intervention_type != "do_nothing",
@@ -519,16 +648,16 @@ class InterventionEngine:
         case_id: str,
         intervention_id: str,
     ) -> Optional[ResolutionPlan]:
-        """Generate a detailed resolution plan for a selected intervention."""
-        case, case_id = self._resolve_case(case_id)
-        if not case:
-            return None
-
+        """Generate a detailed resolution plan and associated work orders for a selected intervention."""
         intervention = self.db.query(InterventionOption).filter(
             InterventionOption.intervention_id == intervention_id,
         ).first()
 
         if not intervention:
+            return None
+
+        case = self.db.query(FailureCase).filter(FailureCase.case_id == case_id).first()
+        if not case:
             return None
 
         # Mark intervention as selected
@@ -566,6 +695,44 @@ class InterventionEngine:
             data_truth=DataTruth.MODEL_ESTIMATION.value,
         )
         self.db.add(plan)
+        self.db.flush() # flush to get plan_id
+
+        # Generate WorkOrder
+        from app.models.domain import WorkOrder, WorkOrderTask
+        
+        work_order = WorkOrder(
+            plan_id=plan.plan_id,
+            intervention_id=intervention_id,
+            case_id=case_id,
+            title=f"WO: {intervention.title}",
+            description=f"Execution of {intervention.title} for case {case.title}",
+            status="SCHEDULED",
+            approval_state=ApprovalState.APPROVED.value,
+            planned_start=datetime.utcnow() + timedelta(days=2),
+            planned_end=datetime.utcnow() + timedelta(days=2 + intervention.estimated_duration_days),
+        )
+        self.db.add(work_order)
+        self.db.flush()
+
+        # Generate WorkOrderTask for each task in phases
+        current_time = work_order.planned_start
+        for phase in phases:
+            for task_def in phase["tasks"]:
+                task_duration_hours = task_def.get("duration_hours", 8)
+                task_end = current_time + timedelta(hours=task_duration_hours)
+                
+                wot = WorkOrderTask(
+                    work_order_id=work_order.work_order_id,
+                    title=task_def.get("title", "Task"),
+                    description=f"Phase {phase['phase']} - {task_def.get('title')}",
+                    sequence=task_def.get("sequence", 1),
+                    status="PENDING",
+                    planned_duration_hours=task_duration_hours,
+                    planned_start=current_time,
+                    planned_end=task_end,
+                )
+                self.db.add(wot)
+                current_time = task_end # sequential for simplicity
 
         # Update case status
         case.status = "INTERVENTION_SELECTED"
@@ -688,29 +855,139 @@ class InterventionEngine:
     # ─────────────────────────────────────────────────────────
 
     def get_interventions(self, case_id: str) -> list[InterventionOption]:
-        _, case_id = self._resolve_case(case_id)
         return self.db.query(InterventionOption).filter(
             InterventionOption.case_id == case_id
         ).order_by(InterventionOption.rank).all()
 
     def get_constraints(self, case_id: str) -> Optional[InterventionConstraint]:
-        _, case_id = self._resolve_case(case_id)
         return self.db.query(InterventionConstraint).filter(
             InterventionConstraint.case_id == case_id
         ).first()
 
     def get_predictions(self, case_id: str) -> list[Prediction]:
-        _, case_id = self._resolve_case(case_id)
         return self.db.query(Prediction).filter(Prediction.case_id == case_id).all()
 
     def get_resolution_plan(self, case_id: str) -> Optional[ResolutionPlan]:
-        _, case_id = self._resolve_case(case_id)
         return self.db.query(ResolutionPlan).filter(
             ResolutionPlan.case_id == case_id
         ).order_by(ResolutionPlan.created_at.desc()).first()
 
     def get_decision_analysis(self, case_id: str) -> Optional[DecisionAnalysis]:
-        _, case_id = self._resolve_case(case_id)
         return self.db.query(DecisionAnalysis).filter(
             DecisionAnalysis.case_id == case_id
         ).order_by(DecisionAnalysis.created_at.desc()).first()
+
+    def run_simulation(self, case_id: str, request) -> dict:
+        """Run a deterministic simulation comparing an intervention against the do-nothing baseline."""
+        baseline = self.generate_baseline_prediction(case_id)
+        if not baseline:
+            return {}
+
+        intervention = None
+        if request.intervention_id:
+            intervention = self.db.query(InterventionOption).filter(
+                InterventionOption.intervention_id == request.intervention_id
+            ).first()
+
+        feasibility = "FEASIBLE"
+        reasons = []
+
+        if intervention:
+            # Check feasibility against provided constraints
+            if request.budget and intervention.estimated_cost > request.budget:
+                feasibility = "NOT FEASIBLE"
+                reasons.append(f"Estimated cost ₹{intervention.estimated_cost} exceeds budget ₹{request.budget}.")
+            
+            if request.deadline_days and intervention.estimated_duration_days > request.deadline_days:
+                feasibility = "NOT FEASIBLE"
+                reasons.append(f"Estimated duration {intervention.estimated_duration_days} days exceeds deadline {request.deadline_days} days.")
+                
+            if request.workers and intervention.workers_required > request.workers:
+                feasibility = "NOT FEASIBLE"
+                reasons.append(f"Requires {intervention.workers_required} workers, but only {request.workers} available.")
+
+            risk_before = baseline.get("current_risk_score", 0.0)
+            risk_reduction = intervention.expected_risk_reduction
+            risk_after = max(0, risk_before - risk_reduction)
+
+            recurrences_before = baseline["expected_incidents"]["max"]
+            recurrences_after = max(0, int(recurrences_before * (1 - risk_reduction)))
+            
+            complaints_before = baseline["expected_complaints"]["max"]
+            complaints_after = max(0, int(complaints_before * (1 - risk_reduction)))
+            
+            cost = intervention.estimated_cost
+            duration = intervention.estimated_duration_days
+            resources = {"workers": intervention.workers_required, "equipment": intervention.equipment}
+            maintenance = intervention.maintenance_burden
+            score = (intervention.overall_score * 100) if hasattr(intervention, 'overall_score') else 0
+            
+            intervention_dict = {
+                "intervention_id": intervention.intervention_id,
+                "title": intervention.title,
+                "intervention_type": intervention.intervention_type,
+            }
+        else:
+            # DO NOTHING
+            risk_before = baseline.get("current_risk_score", 0.0)
+            risk_reduction = 0.0
+            risk_after = risk_before
+            recurrences_before = baseline["expected_incidents"]["max"]
+            recurrences_after = recurrences_before
+            complaints_before = baseline["expected_complaints"]["max"]
+            complaints_after = complaints_before
+            cost = 0
+            duration = 0
+            resources = {"workers": 0, "equipment": []}
+            maintenance = "High"
+            score = 0
+            intervention_dict = None
+
+        result = {
+            "baseline": baseline,
+            "intervention": intervention_dict,
+            "feasibility": feasibility,
+            "risk_before": risk_before,
+            "risk_after": round(risk_after, 2),
+            "risk_reduction": round(risk_reduction, 2),
+            "recurrence_before": {"min": baseline["expected_incidents"]["min"], "max": recurrences_before},
+            "recurrence_after": {"min": max(0, recurrences_after - 1), "max": recurrences_after},
+            "complaint_burden_before": {"min": baseline["expected_complaints"]["min"], "max": complaints_before},
+            "complaint_burden_after": {"min": max(0, complaints_after - 10), "max": complaints_after},
+            "cost": cost,
+            "duration": duration,
+            "resources": resources,
+            "maintenance": maintenance,
+            "confidence": 0.85,
+            "score": round(score, 2),
+            "reasons": reasons,
+            "limitations": [
+                "Screening-level intervention simulation",
+                "Results are model estimates intended to compare intervention strategies, not replace detailed engineering design."
+            ]
+        }
+
+        # Persist simulation run
+        sim_run = SimulationRun(
+            case_id=case_id,
+            intervention_id=request.intervention_id,
+            constraints={
+                "budget": request.budget,
+                "deadline_days": request.deadline_days,
+                "workers": request.workers
+            },
+            baseline_snapshot=baseline,
+            result=result,
+            score=score,
+            feasibility=feasibility
+        )
+        self.db.add(sim_run)
+        self.db.commit()
+
+        return result
+
+    def get_simulation_runs(self, case_id: str) -> list:
+        runs = self.db.query(SimulationRun).filter(
+            SimulationRun.case_id == case_id
+        ).order_by(SimulationRun.created_at.desc()).limit(50).all()
+        return runs

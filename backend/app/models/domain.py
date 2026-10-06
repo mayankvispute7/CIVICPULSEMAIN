@@ -391,6 +391,26 @@ class DecisionAnalysis(Base):
 
 
 # ─────────────────────────────────────────────────────────────
+# Simulation Run
+# ─────────────────────────────────────────────────────────────
+
+class SimulationRun(Base):
+    __tablename__ = "simulation_runs"
+
+    simulation_id = Column(String, primary_key=True, default=generate_uuid)
+    case_id = Column(String, ForeignKey("failure_cases.case_id"), nullable=False)
+    site_id = Column(String, ForeignKey("sites.site_id"), nullable=True)
+    intervention_id = Column(String, ForeignKey("intervention_options.intervention_id"), nullable=True)
+    constraints = Column(JSON, default=dict)
+    baseline_snapshot = Column(JSON, default=dict)
+    result = Column(JSON, default=dict)
+    score = Column(Float, nullable=True)
+    feasibility = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    data_origin = Column(String, default=DataTruth.MODEL_ESTIMATION.value)
+
+
+# ─────────────────────────────────────────────────────────────
 # Prediction
 # ─────────────────────────────────────────────────────────────
 

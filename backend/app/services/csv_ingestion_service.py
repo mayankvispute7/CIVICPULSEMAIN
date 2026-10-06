@@ -116,7 +116,7 @@ class CSVIngestionService:
                     continue
 
                 # Check DB duplicate
-                if self._is_db_duplicate(row):
+                if data_truth != DataTruth.SYNTHETIC_DATA.value and self._is_db_duplicate(row):
                     duplicates += 1
                     errors.append({
                         "row": row_num,
@@ -273,6 +273,14 @@ class CSVIngestionService:
 
     def _is_db_duplicate(self, row: pd.Series) -> bool:
         """Check if a similar complaint already exists in the database."""
+        complaint_id = row.get("complaint_id")
+        if complaint_id is not None and not pd.isna(complaint_id):
+            c_id_str = str(complaint_id).strip()
+            if c_id_str and c_id_str.lower() != "nan":
+                query = self.db.query(Complaint).filter(Complaint.complaint_id == c_id_str)
+                if query.first() is not None:
+                    return True
+
         desc = str(row.get("description", "")).strip()
         lat = row.get("latitude")
         lon = row.get("longitude")
@@ -320,6 +328,21 @@ class CSVIngestionService:
 
     def _create_complaint(self, row: pd.Series, import_id: str, data_truth: str) -> Complaint:
         """Create a Complaint object from a CSV row."""
+        complaint_id = row.get("complaint_id")
+        from app.models.domain import generate_uuid
+        if complaint_id is not None and not pd.isna(complaint_id):
+            c_id_str = str(complaint_id).strip()
+            if c_id_str and c_id_str.lower() != "nan":
+                existing = self.db.query(Complaint).filter(Complaint.complaint_id == c_id_str).first()
+                if existing:
+                    complaint_id = f"{c_id_str}_{import_id[:8]}"
+                else:
+                    complaint_id = c_id_str
+            else:
+                complaint_id = generate_uuid()
+        else:
+            complaint_id = generate_uuid()
+
         desc = str(row.get("description", "")).strip()
         category = self._normalize_category(row.get("category"))
         severity = self._normalize_severity(row.get("severity"))
@@ -367,6 +390,7 @@ class CSVIngestionService:
             site_id = site.site_id
 
         complaint = Complaint(
+            complaint_id=complaint_id,
             import_id=import_id,
             title=title,
             description=desc,
