@@ -1,162 +1,85 @@
-# CIVIC PULSE
+# 🏙️ CivicPulse
 
-## From Infrastructure Failure to Verified Resolution
+> **CivicPulse** is a next-generation Infrastructure Failure Intelligence Platform designed to ingest, analyze, and resolve urban infrastructure issues (like potholes, water leaks, and power outages) with unparalleled speed and analytical rigor.
 
-Civic Pulse is an infrastructure failure intelligence platform that connects:
+![CivicPulse Overview](ss/1.png)
 
-Complaint
-→ Evidence
-→ Investigation
-→ Intervention
-→ Execution
-→ Verification
-→ Outcome
-→ Infrastructure Memory
+## 📖 About The Product
 
----
+Urban infrastructure is complex, and managing its failures shouldn't be chaotic. CivicPulse moves beyond simple ticketing systems by acting as an intelligent orchestrator for municipal and civil maintenance. 
 
-## The Problem
+Instead of treating every complaint as an isolated incident, CivicPulse intelligently clusters reports, identifies root causes, and recommends cost-effective interventions. It's built for city planners, civil engineers, and rapid response teams who need actionable intelligence, not just data.
 
-A city may receive many complaints that are actually symptoms of the same underlying infrastructure failure.
+![Situation Map](ss/2.png)
 
-Traditional workflow:
+## ✨ Core Features
 
-Complaint
-→ Assignment
-→ Work Order
-→ Closure
+- **📡 Intelligent Intake:** Seamlessly ingest bulk data (CSV drag-and-drop) and individual reports. CivicPulse normalizes and prepares data for spatial and temporal analysis.
+- **🗺️ Situation Awareness (Dynamic Mapping):** Visualize infrastructure health in real-time. The Situation view uses clustering algorithms to group related complaints into "Failure Clusters" on an interactive map.
+- **🔍 Case Workspace & Failure Fingerprints:** Dive deep into specific clusters. Each case generates a "Failure Fingerprint" with dynamic metadata, helping teams understand the exact nature of the breakdown.
+- **📑 Evidence Ledger:** Maintain a strict, verifiable audit trail of all evidence submitted for a failure, ensuring accountability and context for decision-makers.
+- **💡 Intervention Lab:** Automatically generate ranked intervention strategies. CivicPulse analyzes the failure and suggests the best corrective actions based on estimated costs, impact, and historical success.
+- **📈 Execution & Memory:** Track the lifecycle of work orders and build a historical database ("Memory") to improve future predictive maintenance.
 
-Civic Pulse adds:
+![Case Workspace](ss/3.png)
+![Intervention Lab](ss/4.png)
 
-Complaint
-→ Cluster
-→ Investigate
-→ Understand Failure
-→ Compare History
-→ Explore Interventions
-→ Predict
-→ Execute
-→ Verify
-→ Measure Outcome
-→ Learn
+## 🏗️ System Architecture
 
----
+CivicPulse is built with a modern, decoupled architecture to ensure scalability and performance.
 
-## Core Differentiator
+### Frontend
+- **Framework:** Next.js (App Router)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **State Management & Fetching:** React Query (`@tanstack/react-query`)
+- **Mapping:** Leaflet & React-Leaflet
+- **UI Components:** Framer Motion (Animations), Lucide React (Icons), Recharts (Data Visualization)
 
-Existing civic systems manage the complaint.
+### Backend
+- **Framework:** FastAPI (Python)
+- **Database:** PostgreSQL (with SQLite support for rapid local development)
+- **ORM:** SQLAlchemy & Alembic
+- **Data Validation:** Pydantic
+- **Machine Learning & Analysis:** Pandas, NumPy, Scikit-learn, HDBSCAN (for spatial clustering)
 
-Civic Pulse investigates the infrastructure failure behind the complaint.
+![Evidence Ledger](ss/5.png)
+![Execution View](ss/6.png)
 
-A city may have:
+## 🚀 Development Setup
 
-100 complaints
+### Prerequisites
+- Node.js (v18+)
+- Python (v3.9+)
 
-but only:
+### 1. Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-10 underlying infrastructure failures.
+# Run the backend server
+uvicorn app.main:app --reload
+```
 
-Civic Pulse attempts to identify those underlying failures.
+### 2. Frontend Setup
+```bash
+cd frontend
+npm install
 
----
+# Run the frontend development server
+npm run dev
+```
 
-## Core Modules
+The frontend will be available at `http://localhost:3000` and the backend API at `http://localhost:8000`.
 
-1. Complaint Intake
-2. Geospatial Intelligence
-3. Complaint Clustering
-4. Failure Fingerprinting
-5. Historical Investigation
-6. Evidence Investigation
-7. Intervention Lab
-8. Counterfactual Analysis
-9. Decision Intelligence
-10. Resolution Planning
-11. Dynamic Execution
-12. Field Evidence Integrity
-13. Outcome Verification
-14. Prediction vs Reality
-15. Infrastructure Memory
+## 🌐 Deployment
 
----
+CivicPulse is designed to be easily deployed to modern cloud platforms.
 
-## Technology
-
-Frontend:
-
-Next.js
-React
-TypeScript
-Tailwind CSS
-Leaflet/MapLibre
-
-Backend:
-
-FastAPI
-Python
-PostgreSQL
-PostGIS
-SQLAlchemy
-GeoAlchemy2
-
-AI/ML:
-
-scikit-learn
-HDBSCAN
-sentence-transformers
-OpenCV
-LLM APIs where appropriate
-
-Earth Observation:
-
-Sentinel datasets
-DEM
-Land-cover datasets
-
-Deployment:
-
-Vercel
-Render
-PostgreSQL provider
+- **Frontend (Vercel):** Connect your GitHub repository to Vercel, set the Root Directory to `frontend`, and configure the `NEXT_PUBLIC_API_URL` environment variable to point to your backend.
+- **Backend (Render):** Deploy as a Web Service on Render using the `backend` directory. Use the build command `pip install -r requirements.txt` and the start command `uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Attach a PostgreSQL database for persistent storage.
 
 ---
-
-## Development Ownership
-
-Backend:
-
-/backend
-
-Frontend:
-
-/frontend
-
-Shared contracts:
-
-ARCHITECTURE.md
-API_CONTRACT.md
-DATA_CONTRACT.md
-INTEGRATION_CHECKLIST.md
-
----
-
-## Development Principle
-
-Complexity belongs in the system, not in the user's face.
-
-Civic Pulse should feel simple to operate while performing sophisticated evidence and infrastructure analysis underneath.
-
----
-
-## Important Data Rule
-
-Synthetic demo data must never be presented as real municipal data.
-
-Every important value should identify whether it is:
-
-REAL DATA
-SYNTHETIC DATA
-MODEL ESTIMATION
-AI-GENERATED TEXT
-EVIDENCE
-ASSUMPTION
+*Built to empower cities, engineer resilience, and predict the unpredictable.*
